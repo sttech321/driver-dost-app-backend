@@ -1,7 +1,9 @@
+import http from 'node:http';
 import app from './app.js';
 import { env } from './config/env.js';
 import { prisma } from './config/prisma.js';
 import { getFirebaseApp } from './config/firebase.js';
+import { initIo } from './socket/io.js';
 
 async function start() {
   // Warm up integrations (non-fatal if Firebase isn't configured).
@@ -15,7 +17,11 @@ async function start() {
     console.error('     Set DATABASE_URL and run `npm run prisma:migrate`.');
   }
 
-  const server = app.listen(env.port, () => {
+  // Wrap Express in an HTTP server so Socket.IO can share the same port.
+  const server = http.createServer(app);
+  initIo(server);
+
+  server.listen(env.port, () => {
     console.log(`[server] Driver Dost API listening on http://localhost:${env.port}`);
   });
 
