@@ -41,6 +41,14 @@ const latLng = {
   lng: z.number().min(-180).max(180).optional(),
 };
 
+// A scheduled pickup must not be in the past (allow 2 min for clock skew).
+const scheduledAtIsFuture = (data) =>
+  !data.scheduledAt || data.scheduledAt.getTime() >= Date.now() - 2 * 60 * 1000;
+const futureScheduleError = {
+  message: 'Scheduled time must be in the future',
+  path: ['scheduledAt'],
+};
+
 export const savedPlaceSchema = z.object({
   label: z.string().min(1).max(120),
   addressLine: z.string().min(1).max(240),
@@ -59,7 +67,7 @@ export const oneWayBookingSchema = z.object({
   scheduledAt: z.coerce.date().optional(),
   distanceKm: z.number().positive().optional(),
   etaMinutes: z.number().int().positive().optional(),
-});
+}).refine(scheduledAtIsFuture, futureScheduleError);
 
 export const hourlyBookingSchema = z.object({
   pickupLabel: z.string().optional(),
@@ -82,7 +90,7 @@ export const outstationBookingSchema = z.object({
   destinationLng: latLng.lng,
   scheduledAt: z.coerce.date().optional(),
   outstationType: z.enum(['ROUND_TRIP', 'ONE_WAY']),
-});
+}).refine(scheduledAtIsFuture, futureScheduleError);
 
 export const payBookingSchema = z.object({
   paymentMethod: z.enum(['CREDIT_CARD', 'UPI', 'CASH', 'WALLET']),
