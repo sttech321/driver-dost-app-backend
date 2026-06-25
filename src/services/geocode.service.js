@@ -162,3 +162,42 @@ export async function reverseGeocode(lat, lng) {
   cacheSet(key, result);
   return result;
 }
+
+// ── Routing (OSRM — free, keyless, road-snapped geometry) ─
+const OSRM_BASE = process.env.OSRM_URL || 'https://router.project-osrm.org';
+
+/**
+ * Driving route between two points, following actual streets.
+ * @returns { points: [{lat,lng}], distanceKm, durationMin } | null
+ */
+export async function getRoute(from, to) {
+  if (
+    !Number.isFinite(from?.lat) ||
+    !Number.isFinite(from?.lng) ||
+    !Number.isFinite(to?.lat) ||
+    !Number.isFinite(to?.lng)
+  ) {
+    return null;
+  }
+  const r = (n) => Math.round(n * 1e5) / 1e5;
+  const key = `route:${r(from.lat)},${r(from.lng)}->${r(to.lat)},${r(to.lng)}`;
+  const cached = cacheGet(key);
+  if (cached) return cached;
+
+  const url = `${OSRM_BASE}/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+  try {
+    const data = await fetchJson(url);
+    const route = data.routes?.[0];
+    if (!route) return null;
+    const points = (route.geometry?.coordinates || []).map(([lng, lat]) => ({ lat, lng }));
+    const result = {
+      points,
+      distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+      durationMin: Math.round(route.duration / 60),
+    };
+    cacheSet(key, result);
+    return result;
+  } catch {
+    return null; // caller falls back to a straight line
+  }
+}

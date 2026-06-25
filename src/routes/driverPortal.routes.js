@@ -14,6 +14,7 @@ router.get('/me', controller.me);
 router.get('/requests', controller.listRequests);
 router.post('/requests/:id/accept', controller.acceptRequest);
 router.get('/bookings', controller.myBookings);
+router.get('/bookings/:id', controller.getBooking);
 router.post('/bookings/:id/status', validate(driverStatusSchema), controller.updateStatus);
 
 // Chat from the driver side (same booking thread as the user).

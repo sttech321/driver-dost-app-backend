@@ -129,6 +129,16 @@ export async function listDriverBookings(driverId) {
   });
 }
 
+/** A single booking assigned to this driver (for the trip detail page). */
+export async function getDriverBooking(driverId, bookingId) {
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, driverId },
+    include: { user: requesterSelect, driver: true },
+  });
+  if (!booking) throw ApiError.notFound('Trip not found');
+  return booking;
+}
+
 export async function updateDriverBookingStatus(driverId, bookingId, status) {
   const { count } = await prisma.booking.updateMany({
     where: { id: bookingId, driverId },

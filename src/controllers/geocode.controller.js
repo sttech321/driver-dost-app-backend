@@ -39,3 +39,16 @@ export const reverse = asyncHandler(async (req, res) => {
   const place = await geocode.reverseGeocode(lat, lng);
   res.json({ success: true, data: place });
 });
+
+// GET /api/geocode/route?fromLat=&fromLng=&toLat=&toLng=  → road-snapped route
+export const route = asyncHandler(async (req, res) => {
+  const fromLat = parseLat(req.query.fromLat);
+  const fromLng = parseLng(req.query.fromLng);
+  const toLat = parseLat(req.query.toLat);
+  const toLng = parseLng(req.query.toLng);
+  if ([fromLat, fromLng, toLat, toLng].some((v) => v === undefined)) {
+    throw ApiError.badRequest('from/to lat & lng are required');
+  }
+  const data = await geocode.getRoute({ lat: fromLat, lng: fromLng }, { lat: toLat, lng: toLng });
+  res.json({ success: true, data });
+});

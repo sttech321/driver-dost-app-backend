@@ -31,6 +31,11 @@ export const myBookings = asyncHandler(async (req, res) => {
   res.json({ success: true, data: bookings });
 });
 
+export const getBooking = asyncHandler(async (req, res) => {
+  const booking = await driverService.getDriverBooking(req.driver.id, req.params.id);
+  res.json({ success: true, data: booking });
+});
+
 export const updateStatus = asyncHandler(async (req, res) => {
   const booking = await driverService.updateDriverBookingStatus(
     req.driver.id,

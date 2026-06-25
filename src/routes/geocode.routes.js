@@ -7,5 +7,6 @@ const router = Router();
 
 router.get('/search', geocodeController.search);
 router.get('/reverse', geocodeController.reverse);
+router.get('/route', geocodeController.route);
 
 export default router;
