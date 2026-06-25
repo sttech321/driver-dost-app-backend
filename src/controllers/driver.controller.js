@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as driverService from '../services/driver.service.js';
+import * as reviewService from '../services/review.service.js';
 import { ApiError } from '../utils/ApiError.js';
 
 export const listRecommended = asyncHandler(async (req, res) => {
@@ -25,4 +26,10 @@ export const getDriver = asyncHandler(async (req, res) => {
   const driver = await driverService.getDriverById(req.params.id);
   if (!driver) throw ApiError.notFound('Driver not found');
   res.json({ success: true, data: driver });
+});
+
+// Public driver profile data: live rating + reviews/comments.
+export const getDriverReviews = asyncHandler(async (req, res) => {
+  const data = await reviewService.getDriverReviews(req.params.id);
+  res.json({ success: true, data });
 });

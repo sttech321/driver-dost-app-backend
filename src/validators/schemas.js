@@ -104,3 +104,8 @@ export const chatMessageSchema = z.object({
 export const driverStatusSchema = z.object({
   status: z.enum(['ARRIVING', 'ONGOING', 'COMPLETED', 'CANCELLED']),
 });
+
+export const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(1000).optional(),
+});

@@ -78,6 +78,7 @@ model User {
 
   savedPlaces SavedPlace[]
   bookings    Booking[]
+  reviews     Review[]
   // A DRIVER account links to exactly one Driver profile.
   driverProfile Driver?
 
@@ -105,6 +106,7 @@ model Driver {
 
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   bookings    Booking[]
+  reviews     Review[]
 
   @@map("drivers")
 }
@@ -165,6 +167,7 @@ model Booking {
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   driver          Driver?             @relation(fields: [driverId], references: [id])
   messages        ChatMessage[]
+  review          Review?
 
   @@index([userId])
   @@index([driverId])
@@ -182,6 +185,24 @@ model ChatMessage {
 
   @@index([bookingId])
   @@map("chat_messages")
+}
+
+// One rider review per booking; drives the driver's aggregate rating.
+model Review {
+  id        String   @id @default(uuid())
+  bookingId String   @unique
+  driverId  String
+  userId    String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("reviews")
 }
 
 // Fallback OTP store — used only when Firebase phone auth is not configured.

@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as bookingService from '../services/booking.service.js';
+import * as reviewService from '../services/review.service.js';
 import { emitNewRequest, emitRequestTaken, emitBookingStatus } from '../socket/events.js';
 
 export const createOneWay = asyncHandler(async (req, res) => {
@@ -45,4 +46,9 @@ export const payBooking = asyncHandler(async (req, res) => {
   );
   emitBookingStatus(booking);
   res.json({ success: true, data: booking });
+});
+
+export const reviewBooking = asyncHandler(async (req, res) => {
+  const result = await reviewService.submitReview(req.user.id, req.params.id, req.body);
+  res.json({ success: true, data: result });
 });
