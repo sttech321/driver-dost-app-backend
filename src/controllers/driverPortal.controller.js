@@ -8,8 +8,14 @@ export const me = asyncHandler(async (req, res) => {
   res.json({ success: true, data: req.driver });
 });
 
-export const listRequests = asyncHandler(async (_req, res) => {
-  const requests = await driverService.listPendingRequests();
+export const listRequests = asyncHandler(async (req, res) => {
+  const lat = req.query.lat != null ? Number(req.query.lat) : undefined;
+  const lng = req.query.lng != null ? Number(req.query.lng) : undefined;
+  // Keep this driver's known location fresh so riders see them as "nearby".
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    driverService.updateDriverLocation(req.driver.id, lat, lng);
+  }
+  const requests = await driverService.listPendingRequests({ lat, lng });
   res.json({ success: true, data: requests });
 });
 

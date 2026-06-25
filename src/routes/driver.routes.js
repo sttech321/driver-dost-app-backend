@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/recommended', driverController.listRecommended);
+router.get('/nearby-count', driverController.nearbyCount);
 router.get('/:id', driverController.getDriver);
 
 export default router;
