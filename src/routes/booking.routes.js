@@ -8,6 +8,7 @@ import {
   hourlyBookingSchema,
   outstationBookingSchema,
   payBookingSchema,
+  verifyPaymentSchema,
   chatMessageSchema,
   reviewSchema,
 } from '../validators/schemas.js';
@@ -26,6 +27,7 @@ router.get('/', bookingController.listBookings);
 router.get('/:id', bookingController.getBooking);
 router.post('/:id/cancel', bookingController.cancelBooking);
 router.post('/:id/pay', validate(payBookingSchema), bookingController.payBooking);
+router.post('/:id/pay/verify', validate(verifyPaymentSchema), bookingController.verifyPayment);
 router.post('/:id/review', validate(reviewSchema), bookingController.reviewBooking);
 
 // Live chat tied to a booking

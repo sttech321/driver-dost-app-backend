@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MANUAL_MIN, MANUAL_MAX } from '../config/walletPackages.js';
 
 const phone = z.string().min(8).max(20);
 const password = z.string().min(6).max(100);
@@ -95,6 +96,23 @@ export const outstationBookingSchema = z.object({
 export const payBookingSchema = z.object({
   paymentMethod: z.enum(['CREDIT_CARD', 'UPI', 'CASH', 'WALLET']),
 });
+
+export const verifyPaymentSchema = z.object({
+  orderId: z.string().min(1),
+  paymentId: z.string().min(1),
+  signature: z.string().min(1),
+});
+
+// Add Money via gateway: exactly one of packageId OR amount (server resolves money).
+// Bounds come from the wallet config so the validator never drifts from the offering.
+export const walletTopUpOrderSchema = z
+  .object({
+    packageId: z.string().min(1).optional(),
+    amount: z.number().int().min(MANUAL_MIN).max(MANUAL_MAX).optional(),
+  })
+  .refine((d) => (d.packageId ? 1 : 0) + (d.amount != null ? 1 : 0) === 1, {
+    message: 'Provide exactly one of packageId or amount',
+  });
 
 export const chatMessageSchema = z.object({
   text: z.string().min(1).max(2000),

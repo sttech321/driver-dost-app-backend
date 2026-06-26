@@ -39,13 +39,15 @@ export const cancelBooking = asyncHandler(async (req, res) => {
 });
 
 export const payBooking = asyncHandler(async (req, res) => {
-  const booking = await bookingService.payBooking(
-    req.user.id,
-    req.params.id,
-    req.body.paymentMethod
-  );
-  emitBookingStatus(booking);
-  res.json({ success: true, data: booking });
+  const result = await bookingService.payBooking(req.user.id, req.params.id, req.body.paymentMethod);
+  if (result.booking?.paymentStatus === 'PAID') emitBookingStatus(result.booking);
+  res.json({ success: true, data: result });
+});
+
+export const verifyPayment = asyncHandler(async (req, res) => {
+  const result = await bookingService.verifyOnlinePayment(req.user.id, req.params.id, req.body);
+  emitBookingStatus(result.booking);
+  res.json({ success: true, data: result });
 });
 
 export const reviewBooking = asyncHandler(async (req, res) => {
