@@ -2,6 +2,15 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import * as bookingService from '../services/booking.service.js';
 import * as reviewService from '../services/review.service.js';
 import { emitNewRequest, emitRequestTaken, emitBookingStatus } from '../socket/events.js';
+import { notify } from '../services/notification.service.js';
+
+const notifyPaid = (userId, booking) =>
+  notify(userId, {
+    type: 'PAYMENT_SUCCESS',
+    title: 'Payment successful',
+    body: `Rs ${Number(booking.amount).toFixed(2)} paid for your ride.`,
+    data: { bookingId: booking.id },
+  });
 
 export const createOneWay = asyncHandler(async (req, res) => {
   const booking = await bookingService.createOneWayBooking(req.user.id, req.body);
@@ -40,13 +49,20 @@ export const cancelBooking = asyncHandler(async (req, res) => {
 
 export const payBooking = asyncHandler(async (req, res) => {
   const result = await bookingService.payBooking(req.user.id, req.params.id, req.body.paymentMethod);
-  if (result.booking?.paymentStatus === 'PAID') emitBookingStatus(result.booking);
+  // Only on the transition to PAID (justPaid) — never on a repeat/already-paid call.
+  if (result.justPaid) {
+    emitBookingStatus(result.booking);
+    notifyPaid(req.user.id, result.booking);
+  }
   res.json({ success: true, data: result });
 });
 
 export const verifyPayment = asyncHandler(async (req, res) => {
   const result = await bookingService.verifyOnlinePayment(req.user.id, req.params.id, req.body);
-  emitBookingStatus(result.booking);
+  if (result.justPaid) {
+    emitBookingStatus(result.booking);
+    notifyPaid(req.user.id, result.booking);
+  }
   res.json({ success: true, data: result });
 });
 

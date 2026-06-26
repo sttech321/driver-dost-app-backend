@@ -144,11 +144,12 @@ const markPaid = (bookingId, paymentMethod, paymentRef) =>
  */
 export async function payBooking(userId, bookingId, paymentMethod) {
   const booking = await getBooking(userId, bookingId);
-  if (booking.paymentStatus === 'PAID') return { booking };
+  // Already settled — no-op (justPaid:false so the caller doesn't re-notify/emit).
+  if (booking.paymentStatus === 'PAID') return { booking, justPaid: false };
   const amount = Number(booking.amount);
 
   if (paymentMethod === 'CASH') {
-    return { booking: await markPaid(bookingId, 'CASH') };
+    return { booking: await markPaid(bookingId, 'CASH'), justPaid: true };
   }
 
   if (paymentMethod === 'WALLET') {
@@ -167,7 +168,7 @@ export async function payBooking(userId, bookingId, paymentMethod) {
         include: bookingInclude,
       });
     });
-    return { booking: updated };
+    return { booking: updated, justPaid: true };
   }
 
   // CREDIT_CARD / UPI → online gateway
@@ -186,17 +187,22 @@ export async function payBooking(userId, bookingId, paymentMethod) {
   }
 
   // Dev mock (no Razorpay keys configured).
-  return { booking: await markPaid(bookingId, paymentMethod, 'DEV_MOCK'), mock: true };
+  return { booking: await markPaid(bookingId, paymentMethod, 'DEV_MOCK'), mock: true, justPaid: true };
 }
 
-/** Verify a Razorpay checkout result and mark the booking paid. */
+/** Verify a Razorpay checkout result and mark the booking paid (idempotent on replay). */
 export async function verifyOnlinePayment(userId, bookingId, { orderId, paymentId, signature }) {
   const booking = await getBooking(userId, bookingId);
+  // Already settled — a replayed verify (retry/double-tap) is a no-op, not a re-notify.
+  if (booking.paymentStatus === 'PAID') return { booking, justPaid: false };
   if (!verifySignature(orderId, paymentId, signature)) {
     throw ApiError.badRequest('Payment verification failed');
   }
   if (booking.paymentOrderId && booking.paymentOrderId !== orderId) {
     throw ApiError.badRequest('Order mismatch');
   }
-  return { booking: await markPaid(bookingId, booking.paymentMethod || 'CREDIT_CARD', paymentId) };
+  return {
+    booking: await markPaid(bookingId, booking.paymentMethod || 'CREDIT_CARD', paymentId),
+    justPaid: true,
+  };
 }

@@ -140,13 +140,17 @@ export async function getDriverBooking(driverId, bookingId) {
 }
 
 export async function updateDriverBookingStatus(driverId, bookingId, status) {
+  // Only a real transition counts: owned, not already in this status, and not
+  // already terminal (can't move out of COMPLETED/CANCELLED). This makes repeated
+  // status calls idempotent so the rider isn't notified twice.
   const { count } = await prisma.booking.updateMany({
-    where: { id: bookingId, driverId },
+    where: { id: bookingId, driverId, status: { not: status, notIn: ['COMPLETED', 'CANCELLED'] } },
     data: { status },
   });
-  if (count === 0) throw ApiError.notFound('Booking not found');
-  return prisma.booking.findUnique({
-    where: { id: bookingId },
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, driverId },
     include: { user: requesterSelect, driver: true },
   });
+  if (!booking) throw ApiError.notFound('Booking not found');
+  return { booking, transitioned: count > 0 };
 }

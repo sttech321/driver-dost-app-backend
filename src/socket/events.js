@@ -25,3 +25,9 @@ export function emitBookingStatus(booking) {
   io.to(bookingRoom(booking.id)).emit('booking:status', booking);
   if (booking.userId) io.to(userRoom(booking.userId)).emit('booking:status', booking);
 }
+
+// Push a new in-app notification to a specific user's personal room.
+export function emitNotification(userId, notification) {
+  if (!userId || !notification) return;
+  getIo()?.to(userRoom(userId)).emit('notification:new', notification);
+}

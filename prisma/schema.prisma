@@ -65,6 +65,20 @@ enum WalletTopUpStatus {
   FAILED
 }
 
+enum NotificationType {
+  BOOKING_ACCEPTED
+  DRIVER_ARRIVING
+  RIDE_STARTED
+  RIDE_COMPLETED
+  RIDE_CANCELLED
+  PAYMENT_SUCCESS
+  WALLET_CREDITED
+  CHAT_MESSAGE
+  NEW_REQUEST
+  PROMO
+  GENERAL
+}
+
 // ───────────────────────── Models ────────────────────────
 model User {
   id          String        @id @default(uuid())
@@ -86,6 +100,7 @@ model User {
   bookings    Booking[]
   reviews     Review[]
   walletTopUps WalletTopUp[]
+  notifications Notification[]
   // A DRIVER account links to exactly one Driver profile.
   driverProfile Driver?
 
@@ -234,6 +249,26 @@ model WalletTopUp {
 
   @@index([userId])
   @@map("wallet_topups")
+}
+
+// In-app notifications (bell icon). Persisted so the list + unread count survive
+// restarts; delivered live via Socket.IO ("notification:new") to the user's room.
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  // Deep-link payload, e.g. { "bookingId": "...", "peerName": "..." }.
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 // Fallback OTP store — used only when Firebase phone auth is not configured.

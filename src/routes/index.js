@@ -5,6 +5,7 @@ import driverRoutes from './driver.routes.js';
 import bookingRoutes from './booking.routes.js';
 import geocodeRoutes from './geocode.routes.js';
 import driverPortalRoutes from './driverPortal.routes.js';
+import notificationRoutes from './notification.routes.js';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/drivers', driverRoutes);
 router.use('/driver', driverPortalRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/geocode', geocodeRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

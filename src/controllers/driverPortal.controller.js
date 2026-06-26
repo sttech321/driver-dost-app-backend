@@ -1,6 +1,15 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as driverService from '../services/driver.service.js';
 import { emitRequestTaken, emitBookingAccepted, emitBookingStatus } from '../socket/events.js';
+import { notify } from '../services/notification.service.js';
+
+// Rider-facing notification copy per booking status.
+const STATUS_NOTIFICATION = {
+  ARRIVING: { type: 'DRIVER_ARRIVING', title: 'Your driver is arriving', body: 'Your driver is on the way to the pickup.' },
+  ONGOING: { type: 'RIDE_STARTED', title: 'Ride started', body: 'Your trip has begun. Have a safe ride!' },
+  COMPLETED: { type: 'RIDE_COMPLETED', title: 'Ride completed', body: 'Your trip is complete. Tap to pay & rate.' },
+  CANCELLED: { type: 'RIDE_CANCELLED', title: 'Ride cancelled', body: 'Your ride was cancelled.' },
+};
 
 // Endpoints for a logged-in DRIVER account (req.driver set by requireDriver).
 
@@ -23,6 +32,12 @@ export const acceptRequest = asyncHandler(async (req, res) => {
   const booking = await driverService.acceptRequest(req.driver, req.params.id);
   emitRequestTaken(booking.id); // other drivers: drop it from their list
   emitBookingAccepted(booking); // rider: driver found
+  notify(booking.userId, {
+    type: 'BOOKING_ACCEPTED',
+    title: 'Driver found!',
+    body: `${booking.driver?.name || 'Your driver'} accepted your ride.`,
+    data: { bookingId: booking.id },
+  });
   res.json({ success: true, data: booking });
 });
 
@@ -37,11 +52,16 @@ export const getBooking = asyncHandler(async (req, res) => {
 });
 
 export const updateStatus = asyncHandler(async (req, res) => {
-  const booking = await driverService.updateDriverBookingStatus(
+  const { booking, transitioned } = await driverService.updateDriverBookingStatus(
     req.driver.id,
     req.params.id,
     req.body.status
   );
-  emitBookingStatus(booking); // rider sees trip progress live
+  // Only emit/notify on a real status transition (idempotent on repeated calls).
+  if (transitioned) {
+    emitBookingStatus(booking); // rider sees trip progress live
+    const n = STATUS_NOTIFICATION[booking.status];
+    if (n) notify(booking.userId, { ...n, data: { bookingId: booking.id } });
+  }
   res.json({ success: true, data: booking });
 });

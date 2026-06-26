@@ -3,6 +3,14 @@ import { ApiError } from '../utils/ApiError.js';
 import { publicUser } from './auth.service.js';
 import { isGatewayConfigured, createOrder, gatewayKeyId, verifySignature } from './payment.service.js';
 import { WALLET_PACKAGES, MANUAL_MIN, MANUAL_MAX } from '../config/walletPackages.js';
+import { notify } from './notification.service.js';
+
+const notifyCredited = (userId, rupees) =>
+  notify(userId, {
+    type: 'WALLET_CREDITED',
+    title: 'Money added to wallet',
+    body: `Rs ${Number(rupees).toFixed(2)} added to your wallet.`,
+  });
 
 /** Packages + manual bounds for the app to render the Add Money sheet. */
 export function getWalletOptions() {
@@ -62,6 +70,7 @@ export async function createWalletTopUpOrder(userId, body) {
     where: { id: userId },
     data: { walletBalance: { increment: creditAmount } },
   });
+  notifyCredited(userId, creditAmount);
   return { mock: true, user: publicUser(user) };
 }
 
@@ -83,7 +92,7 @@ export async function verifyWalletTopUp(userId, { orderId, paymentId, signature 
     throw ApiError.badRequest('Payment verification failed');
   }
 
-  const user = await prisma.$transaction(async (tx) => {
+  const { user, credited } = await prisma.$transaction(async (tx) => {
     // Signature is already verified above, so a previously-FAILED row may now be
     // credited on a valid retry. PAID is the only terminal state (short-circuited above),
     // so this still credits exactly once.
@@ -92,14 +101,16 @@ export async function verifyWalletTopUp(userId, { orderId, paymentId, signature 
       data: { status: 'PAID', paymentId },
     });
     if (claimed.count === 0) {
-      // Another request credited it first — no double credit.
-      return tx.user.findUnique({ where: { id: userId } });
+      // Another request credited it first — no double credit, no duplicate notification.
+      return { user: await tx.user.findUnique({ where: { id: userId } }), credited: false };
     }
-    return tx.user.update({
+    const updated = await tx.user.update({
       where: { id: userId },
       data: { walletBalance: { increment: Number(topup.creditAmount) } },
     });
+    return { user: updated, credited: true };
   });
 
+  if (credited) notifyCredited(userId, topup.creditAmount);
   return { user: publicUser(user) };
 }

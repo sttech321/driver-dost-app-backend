@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { userRoom, driverRoom, bookingRoom, DRIVERS } from './rooms.js';
+import { notify } from '../services/notification.service.js';
 
 // Per-connection setup + event handlers.
 export function registerHandlers(io, socket) {
@@ -46,6 +47,27 @@ export function registerHandlers(io, socket) {
       });
 
       io.to(bookingRoom(bookingId)).emit('chat:message', message);
+
+      // In-app notification to the OTHER participant (bell + Inbox badge).
+      let recipientUserId = null;
+      if (isAssignedDriver) {
+        recipientUserId = booking.userId; // driver sent → notify the rider
+      } else if (booking.driverId) {
+        const d = await prisma.driver.findUnique({
+          where: { id: booking.driverId },
+          select: { userId: true },
+        });
+        recipientUserId = d?.userId ?? null; // rider sent → notify the driver's account
+      }
+      if (recipientUserId) {
+        notify(recipientUserId, {
+          type: 'CHAT_MESSAGE',
+          title: 'New message',
+          body: message.text.slice(0, 100),
+          data: { bookingId },
+        });
+      }
+
       ack?.({ ok: true, message });
     } catch {
       ack?.({ error: 'Server error' });
